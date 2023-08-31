@@ -2,18 +2,6 @@
 #
 # version = "0.84.0"
 
-def "git log" [--take (-n): int = 25] {
-    ^git log --pretty=%h»¦«%s»¦«%aN»¦«%aE»¦«%aD -n $take | lines | split column "»¦«" commit message author email date | upsert date {|d| $d.date | into datetime }
-}
-
-def "dotnet sdks" [] {
-    ^dotnet --list-sdks | lines | str replace ' ' '»¦«' | split column '»¦«' version location
-}
-
-def "config all" [] {
-    open $env.LOCALAPPDATA/nushell
-}
-
 # For more information on defining custom themes, see
 # https://www.nushell.sh/book/coloring_and_theming.html
 # And here is the theme collection

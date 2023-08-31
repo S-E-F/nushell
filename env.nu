@@ -2,6 +2,64 @@
 #
 # version = "0.84.0"
 
+def "git log" [--take (-n): int = 25] {
+    ^git log --pretty=%h»¦«%s»¦«%aN»¦«%aE»¦«%aD -n $take | lines | split column "»¦«" commit message author email date | upsert date {|d| $d.date | into datetime }
+}
+
+def "config all" [] {
+    $env.LOCALAPPDATA | path join 'nushell' | open
+}
+
+def "dotnet sdks" [] {
+    ^dotnet --list-sdks | lines | str replace ' ' '»¦«' | split column '»¦«' version location
+}
+
+def pill [term: string, r: int, g: int, b: int] {
+    if ($term | is-empty) {
+        return ''
+    } else {
+
+        [
+            (ansi -e $"38;2;($r);($g);($b)m")
+            (char -u e0b6)
+            (ansi reset)
+            (ansi -e $"48;2;($r);($g);($b)m")
+            $term
+            (ansi reset)
+            (ansi -e $"38;2;($r);($g);($b)m")
+            (char -u e0b4)
+            (ansi reset)
+            
+        ] | str join
+    }
+}
+
+def "git branches" [] {
+    do -p {
+        ^git --no-optional-locks branch -v
+        | lines 
+        | where $it starts-with '*' 
+        | str replace --regex '\*\s*' '' 
+        | str replace ' ' '>|<' 
+        | str replace ' ' '>|<' 
+        | to text 
+        | str trim 
+        | split column '>|<' branch commit message 
+    }
+}
+
+def "dotnet current sdk" [] {
+    do -i { $env.PWD | path join 'global.json' | open | get sdk.version }
+}
+
+def "dotnet relevant" [] {
+    (ls -f
+    | where type == file
+    | get name
+    | where $it ends-with '.csproj' or $it ends-with '.sln' or $it ends-with '.props' or $it ends-with '.targets'
+    | length) > 0
+}
+
 def create_left_prompt [] {
     mut home = ""
     try {
@@ -19,36 +77,28 @@ def create_left_prompt [] {
 
     let path_color = (if (is-admin) { ansi red_bold } else { ansi green_bold })
     let separator_color = (if (is-admin) { ansi light_red_bold } else { ansi light_green_bold })
-    let b_info = (do -p { git --no-optional-locks branch -v } | str trim)
-    let branch = (if ($b_info | is-empty) {
+    let branch = (if (git branches | is-empty) {
         ''
     } else {
-        [
-            (ansi -e '38;2;240;81;52m')
-            (char -u e0b6)
-            (ansi reset)
-            (ansi -e '48;2;240;81;52m')
-            ($b_info | parse -r '\* (?<name>(\([\S ]+\))|([\w\/\-\.]+)) +\w+ (\[((?<state>[^\]]+))+\])?').name.0
-            (ansi reset)
-            (ansi -e '38;2;240;81;52m')
-            (char -u e0b4)
-            (ansi reset)
-            $path_color
-        ] 
-        | str join 
+        pill (git branches | get branch | to text) 240 81 52
     })
 
-    # TODO: Move def dotnet (in config.nu) to separate module
+    let dotnet = if (dotnet relevant) {
+        let version = dotnet current sdk
+        let final = if ($version | is-empty) {
+            do -p { dotnet sdks | reverse | take 1 } | get version | to text
+        } else {
+            $version
+        }
+        
+        pill $final 103 33 122
     
-    let dotnet_info = (do -p { dotnet sdks | reverse | take 1 })
-    let dotnet = (if ($dotnet_info | is-empty) {
-        ''
     } else {
-        $dotnet_info | get version | to text
-    })
-            
-    let path_segment = $"\n(char -u 256d) ($path_color)($dir) ($branch) ($dotnet)\n(char -u '2502')\n(char -u '2570')"
+        ''
+    }
 
+    let pills = [$branch $dotnet] | str join ' ' 
+    let path_segment = $"\n(char -u 256d) ($path_color)($dir) ($pills)($path_color)\n(char -u '2502')\n(char -u '2570')"
     $path_segment | str replace --all (char path_sep) $"($separator_color)/($path_color)"
 }
 
@@ -57,7 +107,7 @@ def create_right_prompt [] {
     let time_segment = ([
         (ansi reset)
         (ansi magenta)
-        (date now | format date '%Y/%m/%d %r')
+        (date now | format date '%d-%m-%Y %r')
     ] | str join | str replace --regex --all "([/:])" $"(ansi green)${1}(ansi magenta)" |
         str replace --regex --all "([AP]M)" $"(ansi magenta_underline)${1}")
 
