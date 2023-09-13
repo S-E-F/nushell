@@ -3,22 +3,29 @@
 # version = "0.84.0"
 
 def "git log" [--take (-n): int = 25] {
-    ^git log --pretty=%h»¦«%s»¦«%aN»¦«%aE»¦«%aD -n $take | lines | split column "»¦«" commit message author email date | upsert date {|d| $d.date | into datetime }
+    ^git log --pretty=%h»¦«%s»¦«%aN»¦«%aE»¦«%aD -n $take
+    | lines
+    | split column "»¦«" commit message author email date
+    | upsert date {|d| $d.date | into datetime }
 }
 
 def "config all" [] {
-    $env.LOCALAPPDATA | path join 'nushell' | open
+    $env.LOCALAPPDATA 
+    | path join 'nushell'
+    | open
 }
 
 def "dotnet sdks" [] {
-    ^dotnet --list-sdks | lines | str replace ' ' '»¦«' | split column '»¦«' version location
+    ^dotnet --list-sdks
+    | lines
+    | str replace ' ' '»¦«'
+    | split column '»¦«' version location
 }
 
 def pill [term: string, r: int, g: int, b: int] {
     if ($term | is-empty) {
         return ''
     } else {
-
         [
             (ansi -e $"38;2;($r);($g);($b)m")
             (char -u e0b6)
@@ -56,7 +63,10 @@ def "dotnet relevant" [] {
     (ls -f
     | where type == file
     | get name
-    | where $it ends-with '.csproj' or $it ends-with '.sln' or $it ends-with '.props' or $it ends-with '.targets'
+    | where $it ends-with '.csproj'
+         or $it ends-with '.sln'
+         or $it ends-with '.props'
+         or $it ends-with '.targets'
     | length) > 0
 }
 
