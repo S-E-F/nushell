@@ -5,6 +5,14 @@
 alias vim = nvim .
 alias v = nvim .
 
+def "git config list" [] {
+    ^git --no-pager config --list
+    | lines
+    | str replace '=' '»¦«'
+    | split column '»¦«' key value
+    | sort-by key
+}
+
 def "git log" [--take (-n): int = 25] {
     ^git log --pretty=%h»¦«%s»¦«%aN»¦«%aE»¦«%aD -n $take
     | lines
