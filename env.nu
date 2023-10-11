@@ -2,9 +2,6 @@
 #
 # version = "0.84.0"
 
-alias vim = nvim .
-alias v = nvim .
-
 def "git config list" [] {
     ^git --no-pager config --list
     | lines
