@@ -2,6 +2,9 @@
 #
 # version = "0.84.0"
 
+alias vim = nvim .
+alias v = nvim .
+
 def "git log" [--take (-n): int = 25] {
     ^git log --pretty=%h»¦«%s»¦«%aN»¦«%aE»¦«%aD -n $take
     | lines
@@ -70,6 +73,12 @@ def "dotnet relevant" [] {
     | length) > 0
 }
 
+def pwd [] {
+
+    let path_color = (if (is-admin) { ansi red_bold } else { ansi green_bold })
+    let path_color_dimmed = (if (is-admin) { ansi red_dimmed } else { ansi green_dimmed })
+  [$path_color,(pwd | str trim -c (char path_sep) | split row (char path_sep) | str join $"/")] | str join | str replace --all "/" $"($path_color_dimmed)/(ansi reset)($path_color)"
+}
 def create_left_prompt [] {
     mut home = ""
     try {
@@ -80,36 +89,11 @@ def create_left_prompt [] {
         }
     }
 
-    let dir = ([
-        ($env.PWD | str substring 0..($home | str length) | str replace $home "~"),
-        ($env.PWD | str substring ($home | str length)..)
-    ] | str join)
+    let dir = [($env.PWD | str substring 0..($home | str length) | str replace $home "~"),($env.PWD | str substring ($home | str length)..)] | str join | split row (char path_sep) | where not ($it | is-empty)
 
     let path_color = (if (is-admin) { ansi red_bold } else { ansi green_bold })
-    let separator_color = (if (is-admin) { ansi light_red_bold } else { ansi light_green_bold })
-    let branch = (if (git branches | is-empty) {
-        ''
-    } else {
-        pill (git branches | get branch | to text) 240 81 52
-    })
-
-    let dotnet = if (dotnet relevant) {
-        let version = dotnet current sdk
-        let final = if ($version | is-empty) {
-            do -p { dotnet sdks | reverse | take 1 } | get version | to text
-        } else {
-            $version
-        }
-        
-        pill $final 103 33 122
     
-    } else {
-        ''
-    }
-
-    let pills = [$branch $dotnet] | str join ' ' 
-    let path_segment = $"\n(char -u 256d) ($path_color)($dir) ($pills)($path_color)\n(char -u '2502')\n(char -u '2570')"
-    $path_segment | str replace --all (char path_sep) $"($separator_color)/($path_color)"
+    $" ($path_color)($dir | last 1 | str join | str trim -c ':')"
 }
 
 def create_right_prompt [] {
@@ -132,13 +116,13 @@ def create_right_prompt [] {
 
 # Use nushell functions to define your right and left prompt
 $env.PROMPT_COMMAND = {|| create_left_prompt }
-$env.PROMPT_COMMAND_RIGHT = {|| create_right_prompt }
+$env.PROMPT_COMMAND_RIGHT = { || }
 
 # The prompt indicators are environmental variables that represent
 # the state of the prompt
-$env.PROMPT_INDICATOR = {|| " > " }
-$env.PROMPT_INDICATOR_VI_INSERT = {|| " > " }
-$env.PROMPT_INDICATOR_VI_NORMAL = {|| " > " }
+$env.PROMPT_INDICATOR = {|| $" (char -u eb70) " }
+$env.PROMPT_INDICATOR_VI_INSERT = {|| $" (char -u eb70) " }
+$env.PROMPT_INDICATOR_VI_NORMAL = {|| $" (char -u eb70) " }
 $env.PROMPT_MULTILINE_INDICATOR = {|| "::: " }
 
 # Specifies how environment variables are:
