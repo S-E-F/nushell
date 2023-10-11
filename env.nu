@@ -81,12 +81,6 @@ def "dotnet relevant" [] {
     | length) > 0
 }
 
-def pwd [] {
-
-    let path_color = (if (is-admin) { ansi red_bold } else { ansi green_bold })
-    let path_color_dimmed = (if (is-admin) { ansi red_dimmed } else { ansi green_dimmed })
-  [$path_color,(pwd | str trim -c (char path_sep) | split row (char path_sep) | str join $"/")] | str join | str replace --all "/" $"($path_color_dimmed)/(ansi reset)($path_color)"
-}
 def create_left_prompt [] {
     mut home = ""
     try {
@@ -97,11 +91,20 @@ def create_left_prompt [] {
         }
     }
 
-    let dir = [($env.PWD | str substring 0..($home | str length) | str replace $home "~"),($env.PWD | str substring ($home | str length)..)] | str join | split row (char path_sep) | where not ($it | is-empty)
+    let dir = [
+      ($env.PWD | str substring 0..($home | str length) | str replace $home "~"),
+      ($env.PWD | str substring ($home | str length)..)
+    ] 
+    | str join 
+    | split row (char path_sep) 
+    | where not ($it | is-empty)
+    | last 1
+    | str join
+    | str trim -c ':'
 
     let path_color = (if (is-admin) { ansi red_bold } else { ansi green_bold })
     
-    $" ($path_color)($dir | last 1 | str join | str trim -c ':')"
+    $" ($path_color)($dir)"
 }
 
 def create_right_prompt [] {
@@ -158,7 +161,7 @@ $env.NU_PLUGIN_DIRS = [
     # ($nu.default-config-dir | path join 'plugins') # add <nushell-config-dir>/plugins
 ]
 
-$env.EDITOR = "code --wait"
+$env.EDITOR = "nvim"
 
 # To add entries to PATH (on Windows you might use Path), you can use the following pattern:
 # $env.PATH = ($env.PATH | split row (char esep) | prepend '/some/path')
